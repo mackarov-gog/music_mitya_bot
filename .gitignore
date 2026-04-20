@@ -25,7 +25,5 @@ __pycache__/
 *.pem
 secrets.h
 firmware/**/secrets.h
-1.py
-main.py
-3.py
+
 
