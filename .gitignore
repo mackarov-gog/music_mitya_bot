@@ -1,0 +1,31 @@
+requirements.md
+
+# Общие исключения
+.DS_Store
+*.swp
+*.log
+
+# Среда разработки
+.vscode/
+.idea/
+
+# Зависимости
+node_modules/
+venv/
+.venv/
+__pycache__/
+
+# Прошивки
+*.bin
+*.elf
+*.hex
+
+# Конфиги с секретами
+.env
+*.pem
+secrets.h
+firmware/**/secrets.h
+1.py
+main.py
+3.py
+

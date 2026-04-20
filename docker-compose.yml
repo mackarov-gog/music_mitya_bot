@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  music-bot:
+    build: .
+    container_name: discord-music-bot
+    restart: unless-stopped      # автоматический перезапуск
+    environment:
+      - TOKEN=${TOKEN}           # токен из переменной окружения на хосте
+      # При необходимости другие переменные, если вы их используете в config.py
+    volumes:
+      # Монтируем папку с музыкой (локальные треки)
+      - ./music_library:/app/music_library
+      # Опционально: смонтировать config.py, если хотите править без пересборки
+      # - ./config.py:/app/config.py
+    # Если бот использует голосовые каналы, проброс портов не требуется (WebSocket наружу)
