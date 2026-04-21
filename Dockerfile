@@ -12,7 +12,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py config.py ./
+COPY . .
 RUN mkdir -p /app/music_library
 
-CMD ["python", "-u", "main.py"]
+CMD ["python", "main.py"]
