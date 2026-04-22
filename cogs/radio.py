@@ -36,60 +36,70 @@ class RadioCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='radio', description="Включить интернет-радио по названию или стране")
-    @app_commands.describe(query="Название радиостанции или жанр")
+    @app_commands.command(name='radio', description="Включить интернет-радио")
     async def radio(self, interaction: discord.Interaction, query: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)
 
-        await interaction.response.defer() # Говорим дискорду "подожди, я ищу"
+        await interaction.response.defer()
 
-        get_queue(self.bot, interaction.guild.id).clear()
-        if interaction.guild.voice_client and interaction.guild.voice_client.is_playing():
-            interaction.guild.voice_client.stop()
-
+        # 1. Поиск станций
         stations = await search_radio_stations(query)
         if not stations:
-            return await interaction.followup.send(f"❌ Ничего не найдено по запросу `{query}`.")
+            return await interaction.followup.send(f"❌ Ничего не найдено.")
 
-        embed = discord.Embed(
-            title="📻 Доступные радиостанции",
-            description=f"Найдено {len(stations)} станций. Выберите из списка:",
-            color=discord.Color.blue()
-        )
-
+        # 2. Выбор станции пользователем
         view = RadioSelectView(stations, interaction.user)
-        message = await interaction.followup.send(embed=embed, view=view, wait=True)
+        message = await interaction.followup.send("📻 Выберите станцию:", view=view)
         await view.wait()
 
         if view.selected_station is None:
-            return await message.edit(content="⏰ Время на выбор истекло.", embed=None, view=None)
+            return await message.edit(content="⏰ Время истекло.", view=None)
 
         station = view.selected_station
-        stream_url = station['url']
-        station_name = station['name']
 
+        # 3. ПОДКЛЮЧЕНИЕ К КАНАЛУ
         voice_channel = interaction.user.voice.channel
         voice_client = interaction.guild.voice_client
 
         if voice_client is None:
-            voice_client = await voice_channel.connect()
+            try:
+                # Увеличиваем таймаут подключения (стандартно там 15 сек, иногда не хватает)
+                voice_client = await voice_channel.connect(timeout=20.0)
+            except asyncio.TimeoutError:
+                # Если Discord затупил, сбрасываем зависшее состояние
+                if interaction.guild.voice_client:
+                    await interaction.guild.voice_client.disconnect(force=True)
+                return await interaction.followup.send(
+                    "❌ Discord не отвечает. Не удалось подключиться к голосовому каналу (Таймаут). Попробуй еще раз.")
+            except Exception as e:
+                return await interaction.followup.send(f"❌ Ошибка подключения: {e}")
         elif voice_client.channel != voice_channel:
             await voice_client.move_to(voice_channel)
 
-        try:
-            source = discord.FFmpegPCMAudio(stream_url, **config.RADIO_FFMPEG_OPTIONS)
+        # 4. Подготовка данных для плеера
+        queue = get_queue(self.bot, interaction.guild.id)
+        queue.clear()  # Для радио очищаем очередь
 
-            def after_radio(error):
-                if error:
-                    print(f'Ошибка воспроизведения радио: {error}')
-                asyncio.run_coroutine_threadsafe(play_next(self.bot, interaction.guild), self.bot.loop)
+        if voice_client.is_playing() or voice_client.is_paused():
+            voice_client.stop()
 
-            voice_client.play(source, after=after_radio)
+        # Создаем источник
+        source = discord.FFmpegPCMAudio(station['url'], **config.RADIO_FFMPEG_OPTIONS)
 
-            await message.edit(content=f"🎶 **Сейчас играет радио:** {station_name}", embed=None, view=None)
-        except Exception as e:
-            await message.edit(content=f"❌ Ошибка воспроизведения: {e}", embed=None, view=None)
+        queue.append({
+            'source': source,
+            'title': station['name'],
+            'url': station['url'],
+            'duration_sec': 0,
+            'user_mention': interaction.user.mention,
+            'type': 'Radio',
+            'channel': interaction.channel
+        })
+
+        # 5. Запуск
+        await play_next(self.bot, interaction.guild)
+        await message.edit(content=f"📻 Играет радио: **{station['name']}**", view=None)
 
 async def setup(bot):
     await bot.add_cog(RadioCog(bot))

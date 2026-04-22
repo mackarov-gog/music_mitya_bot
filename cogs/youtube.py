@@ -37,14 +37,13 @@ class YouTubeCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name='play', description="Найти и воспроизвести музыку")
-    @app_commands.describe(query="Название песни или ссылка")
     async def play(self, interaction: discord.Interaction, query: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)
 
         await interaction.response.defer()
 
-
+        # Поиск и получение source (логика из вашего файла)
         if query.startswith("http"):
             try:
                 source = await YTDLSource.from_url(query, loop=self.bot.loop, stream=True)
@@ -67,28 +66,43 @@ class YouTubeCog(commands.Cog):
             await search_msg.delete()
             source = await YTDLSource.regather_stream(selected_data, loop=self.bot.loop)
 
-
+        # ПОДКЛЮЧЕНИЕ И ОЧЕРЕДЬ
+        voice_channel = interaction.user.voice.channel
         voice_client = interaction.guild.voice_client
-        if not voice_client:
-            voice_client = await interaction.user.voice.channel.connect()
 
+        if voice_client is None:
+            try:
+                # Увеличиваем таймаут подключения (стандартно там 15 сек, иногда не хватает)
+                voice_client = await voice_channel.connect(timeout=20.0)
+            except asyncio.TimeoutError:
+                # Если Discord затупил, сбрасываем зависшее состояние
+                if interaction.guild.voice_client:
+                    await interaction.guild.voice_client.disconnect(force=True)
+                return await interaction.followup.send(
+                    "❌ Discord не отвечает. Не удалось подключиться к голосовому каналу (Таймаут). Попробуй еще раз.")
+            except Exception as e:
+                return await interaction.followup.send(f"❌ Ошибка подключения: {e}")
+        elif voice_client.channel != voice_channel:
+            await voice_client.move_to(voice_channel)
 
         queue = get_queue(self.bot, interaction.guild.id)
-        duration_str = str(datetime.timedelta(seconds=selected_data.get('duration', 0)))
 
+        # Добавляем данные в едином формате
         queue.append({
             'source': source,
             'title': source.title,
-            'duration': duration_str,
+            'duration_sec': int(selected_data.get('duration', 0)),  # Числом для прогресс-бара
             'user_mention': interaction.user.mention,
-            'is_local': False
+            'type': 'YouTube',
+            'channel': interaction.channel  # Чтобы плеер знал, где рисоваться
         })
 
         if voice_client.is_playing() or voice_client.is_paused():
             await interaction.followup.send(f"➕ Добавлено в очередь: **{source.title}**")
         else:
-            await interaction.followup.send(f"🎶 Начинаю играть: **{source.title}**")
             await play_next(self.bot, interaction.guild)
+
+
 
     @app_commands.command(name='skip', description="Пропустить текущий трек")
     async def skip(self, interaction: discord.Interaction):

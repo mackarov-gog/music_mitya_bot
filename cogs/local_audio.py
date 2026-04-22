@@ -11,7 +11,6 @@ class LocalAudioCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name='playlocal', description="Воспроизвести локальный файл")
-    @app_commands.describe(filename="Название файла из папки music (с расширением)")
     async def playlocal(self, interaction: discord.Interaction, filename: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)
@@ -25,17 +24,39 @@ class LocalAudioCog(commands.Cog):
         voice_channel = interaction.user.voice.channel
         voice_client = interaction.guild.voice_client
 
-        if not voice_client:
-            voice_client = await voice_channel.connect()
+        if voice_client is None:
+            try:
+                # Увеличиваем таймаут подключения (стандартно там 15 сек, иногда не хватает)
+                voice_client = await voice_channel.connect(timeout=20.0)
+            except asyncio.TimeoutError:
+                # Если Discord затупил, сбрасываем зависшее состояние
+                if interaction.guild.voice_client:
+                    await interaction.guild.voice_client.disconnect(force=True)
+                return await interaction.followup.send(
+                    "❌ Discord не отвечает. Не удалось подключиться к голосовому каналу (Таймаут). Попробуй еще раз.")
+            except Exception as e:
+                return await interaction.followup.send(f"❌ Ошибка подключения: {e}")
+        elif voice_client.channel != voice_channel:
+            await voice_client.move_to(voice_channel)
+
+        # Создаем аудио-источник сразу
+        source = discord.FFmpegPCMAudio(full_path)
 
         queue = get_queue(self.bot, interaction.guild.id)
-        queue.append({'path': full_path, 'title': filename, 'is_local': True})
+        queue.append({
+            'source': source,
+            'title': filename,
+            'duration_sec': 0,  # Можно оставить 0, если не читаем длительность файла
+            'user_mention': interaction.user.mention,
+            'type': 'Local',
+            'channel': interaction.channel
+        })
 
         if voice_client.is_playing() or voice_client.is_paused():
             await interaction.followup.send(f"➕ Добавлено в очередь: **{filename}**")
         else:
-            await interaction.followup.send(f"🎶 Начинаю воспроизведение: **{filename}**")
             await play_next(self.bot, interaction.guild)
+            await interaction.followup.send(f"🎶 Играю локальный файл: **{filename}**", ephemeral=True)
 
     @app_commands.command(name='listlocal', description="Список доступных локальных треков")
     async def listlocal(self, interaction: discord.Interaction):

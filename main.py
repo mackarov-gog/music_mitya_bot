@@ -31,3 +31,4 @@ if __name__ == "__main__":
         print("Ошибка: Токен бота не найден в .env")
     else:
         bot.run(config.TOKEN)
+
