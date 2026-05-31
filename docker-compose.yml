@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   music-bot:
-    image: mackarovgog/music_mitya_bot:1.2
+    image: mackarovgog/music_mitya_bot:latest
     container_name: discord-music-bot
     restart: unless-stopped
     environment:
