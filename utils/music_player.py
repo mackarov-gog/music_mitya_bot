@@ -1,13 +1,17 @@
 import discord
 import asyncio
 import datetime
+from utils.ytdl_source import YTDLSource
+import config
+
+last_played_titles = {}
 
 queues = {}
 playback_timers = {}
 
-# Словари для исправления багов с меню и радио
-last_player_messages = {}  # Хранит ID сообщений для удаления (Баг 3)
-radio_pause_states = {}  # Флаг искусственной паузы для радио (Баг 2)
+
+last_player_messages = {}
+radio_pause_states = {}
 
 
 def get_queue(bot, guild_id):
@@ -113,10 +117,8 @@ class UniversalPlayerView(discord.ui.View):
                 del last_player_messages[self.guild_id]
 
             try:
-                # ИСПОЛЬЗУЕМ edit_original_response вместо interaction.response.edit_message
                 await interaction.edit_original_response(content="🛑 **Плеер остановлен**", embed=None, view=None)
             except discord.NotFound:
-                # Если сообщение уже удалено, используем followup.send для нового эфемерного сообщения
                 await interaction.followup.send("🛑 Плеер остановлен", ephemeral=True)
 
 
@@ -155,9 +157,9 @@ async def update_player_status(message, item, guild):
     duration = item.get('duration_sec', 0)
     guild_id = guild.id
     playback_timers[guild_id] = 0
-    step = 5
+    step = 15
 
-    # БАГ 1: Цикл теперь работает даже для радио (duration=0), чтобы обновлять "В очереди N треков"
+
     while guild.voice_client and (
             guild.voice_client.is_playing() or guild.voice_client.is_paused() or radio_pause_states.get(guild_id)):
         if guild.voice_client.is_playing():
@@ -165,14 +167,13 @@ async def update_player_status(message, item, guild):
 
         elapsed = playback_timers[guild_id]
 
-        # Выходим только если у трека есть длина и она закончилась
         if duration > 0 and elapsed >= duration:
             break
 
         try:
             await message.edit(embed=get_universal_embed(item, guild, elapsed))
         except Exception:
-            break  # Если сообщение удалили - цикл корректно завершается
+            break
 
         await asyncio.sleep(step)
 
@@ -180,11 +181,11 @@ async def update_player_status(message, item, guild):
 async def play_next(bot, guild):
     guild_id = guild.id
 
-    # БАГ 2: Блокируем авто-старт, если радио было поставлено на паузу
+
     if radio_pause_states.get(guild_id):
         return
 
-    # БАГ 3: Удаляем меню от прошлого трека перед запуском нового
+
     if guild_id in last_player_messages:
         try:
             await last_player_messages[guild_id].delete()
@@ -193,17 +194,39 @@ async def play_next(bot, guild):
         del last_player_messages[guild_id]
 
     queue = get_queue(bot, guild_id)
+
+
+    if not queue and config.CHAIN_PLAY_ENABLED.get(guild_id, False):
+        last_title = last_played_titles.get(guild_id)
+        if last_title:
+
+            search_query = f"{last_title} mix"
+            tracks = await YTDLSource.search(search_query, loop=bot.loop)
+            if tracks:
+
+                next_track = tracks[1] if len(tracks) > 1 else tracks[0]
+                source = await YTDLSource.regather_stream(next_track, loop=bot.loop)
+                queue.append({
+                    'source': source,
+                    'title': source.title,
+                    'user_mention': "🤖 Авто-DJ",
+                    'type': 'YouTube'
+                })
+
+
+
     if not queue:
         playback_timers[guild_id] = 0
         return
 
     item = queue.pop(0)
     playback_timers[guild_id] = 0
+    last_played_titles[guild_id] = item['title']
 
     voice_client = guild.voice_client
     if not voice_client: return
 
-    # Создание источника, если его нет (после рестарта радио)
+
     if 'source' not in item or item['source'] is None:
         if item.get('type') == 'Radio':
             import config
@@ -224,8 +247,8 @@ async def play_next(bot, guild):
         view = UniversalPlayerView(bot, guild_id, item)
         msg = await channel.send(embed=embed, view=view)
 
-        # Сохраняем сообщение, чтобы удалить его в следующем вызове
+
         last_player_messages[guild_id] = msg
 
-        # БАГ 1: Всегда запускаем апдейтер для обновления очереди
+
         bot.loop.create_task(update_player_status(msg, item, guild))

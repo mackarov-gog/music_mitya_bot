@@ -43,7 +43,6 @@ class YouTubeCog(commands.Cog):
 
         await interaction.response.defer()
 
-        # Поиск и получение source (логика из вашего файла)
         if query.startswith("http"):
             try:
                 source = await YTDLSource.from_url(query, loop=self.bot.loop, stream=True)
@@ -66,16 +65,13 @@ class YouTubeCog(commands.Cog):
             await search_msg.delete()
             source = await YTDLSource.regather_stream(selected_data, loop=self.bot.loop)
 
-        # ПОДКЛЮЧЕНИЕ И ОЧЕРЕДЬ
         voice_channel = interaction.user.voice.channel
         voice_client = interaction.guild.voice_client
 
         if voice_client is None:
             try:
-                # Увеличиваем таймаут подключения (стандартно там 15 сек, иногда не хватает)
                 voice_client = await voice_channel.connect(timeout=20.0)
             except asyncio.TimeoutError:
-                # Если Discord затупил, сбрасываем зависшее состояние
                 if interaction.guild.voice_client:
                     await interaction.guild.voice_client.disconnect(force=True)
                 return await interaction.followup.send(
@@ -91,10 +87,10 @@ class YouTubeCog(commands.Cog):
         queue.append({
             'source': source,
             'title': source.title,
-            'duration_sec': int(selected_data.get('duration', 0)),  # Числом для прогресс-бара
+            'duration_sec': int(selected_data.get('duration', 0)),
             'user_mention': interaction.user.mention,
             'type': 'YouTube',
-            'channel': interaction.channel  # Чтобы плеер знал, где рисоваться
+            'channel': interaction.channel
         })
 
         if voice_client.is_playing() or voice_client.is_paused():
@@ -130,7 +126,7 @@ class YouTubeCog(commands.Cog):
         if not queue:
             return await interaction.response.send_message("📭 Очередь пуста.")
 
-        lines = [f"{i + 1}. {item['title']} (`{item.get('duration', '??')}`)" for i, item in enumerate(queue[:10])]
+        lines = [f"{i + 1}. {item['title']} (`{item.get('duration_sec', '??')}`)" for i, item in enumerate(queue[:10])]
         msg = "**Очередь:**\n" + "\n".join(lines)
         if len(queue) > 10:
             msg += f"\n*и ещё {len(queue) - 10}...*"

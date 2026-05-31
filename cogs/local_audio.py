@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -26,10 +27,8 @@ class LocalAudioCog(commands.Cog):
 
         if voice_client is None:
             try:
-                # Увеличиваем таймаут подключения (стандартно там 15 сек, иногда не хватает)
                 voice_client = await voice_channel.connect(timeout=20.0)
             except asyncio.TimeoutError:
-                # Если Discord затупил, сбрасываем зависшее состояние
                 if interaction.guild.voice_client:
                     await interaction.guild.voice_client.disconnect(force=True)
                 return await interaction.followup.send(
@@ -39,14 +38,13 @@ class LocalAudioCog(commands.Cog):
         elif voice_client.channel != voice_channel:
             await voice_client.move_to(voice_channel)
 
-        # Создаем аудио-источник сразу
         source = discord.FFmpegPCMAudio(full_path)
 
         queue = get_queue(self.bot, interaction.guild.id)
         queue.append({
             'source': source,
             'title': filename,
-            'duration_sec': 0,  # Можно оставить 0, если не читаем длительность файла
+            'duration_sec': 0,
             'user_mention': interaction.user.mention,
             'type': 'Local',
             'channel': interaction.channel
@@ -68,7 +66,25 @@ class LocalAudioCog(commands.Cog):
         if not files:
             return await interaction.response.send_message("📁 Нет локальных треков.")
 
-        await interaction.response.send_message("**Доступные локальные треки:**\n" + "\n".join(files[:20]))
+        await interaction.response.defer()
+
+        files.sort()
+
+        messages = []
+        current_chunk = "**Доступные локальные треки:**\n"
+
+        for file in files:
+            if len(current_chunk) + len(file) + 1 > 1900:
+                messages.append(current_chunk)
+                current_chunk = f"{file}\n"
+            else:
+                current_chunk += f"{file}\n"
+
+        if current_chunk:
+            messages.append(current_chunk)
+
+        for chunk in messages:
+            await interaction.followup.send(chunk)
 
 
 async def setup(bot):

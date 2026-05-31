@@ -15,7 +15,7 @@ ytdl_options['ignoreerrors'] = True
 ytdl = yt_dlp.YoutubeDL(ytdl_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
+    def __init__(self, source, *, data, volume=1.0):
         super().__init__(source, volume)
         self.data = data
         self.title = data.get('title')
@@ -26,7 +26,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def search(cls, query, *, loop=None):
         loop = loop or asyncio.get_event_loop()
         try:
-            # Пытаемся найти треки
             data = await loop.run_in_executor(
                 None,
                 lambda: ytdl.extract_info(f"ytsearch15:{query}", download=False)
@@ -35,7 +34,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
             if not data:
                 return []
 
-            # Оставляем только те результаты, которые успешно извлеклись
             return [entry for entry in data.get('entries', []) if entry is not None]
 
         except Exception as e:
@@ -45,7 +43,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def regather_stream(cls, data, *, loop=None):
         loop = loop or asyncio.get_event_loop()
-        # Повторно получаем прямую ссылку перед проигрыванием
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(data['webpage_url'], download=False))
         return cls(discord.FFmpegPCMAudio(data['url'], **ffmpeg_options), data=data)
 

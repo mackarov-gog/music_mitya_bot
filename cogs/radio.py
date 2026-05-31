@@ -43,12 +43,10 @@ class RadioCog(commands.Cog):
 
         await interaction.response.defer()
 
-        # 1. Поиск станций
         stations = await search_radio_stations(query)
         if not stations:
             return await interaction.followup.send(f"❌ Ничего не найдено.")
 
-        # 2. Выбор станции пользователем
         view = RadioSelectView(stations, interaction.user)
         message = await interaction.followup.send("📻 Выберите станцию:", view=view)
         await view.wait()
@@ -58,16 +56,13 @@ class RadioCog(commands.Cog):
 
         station = view.selected_station
 
-        # 3. ПОДКЛЮЧЕНИЕ К КАНАЛУ
         voice_channel = interaction.user.voice.channel
         voice_client = interaction.guild.voice_client
 
         if voice_client is None:
             try:
-                # Увеличиваем таймаут подключения (стандартно там 15 сек, иногда не хватает)
                 voice_client = await voice_channel.connect(timeout=20.0)
             except asyncio.TimeoutError:
-                # Если Discord затупил, сбрасываем зависшее состояние
                 if interaction.guild.voice_client:
                     await interaction.guild.voice_client.disconnect(force=True)
                 return await interaction.followup.send(
@@ -77,14 +72,12 @@ class RadioCog(commands.Cog):
         elif voice_client.channel != voice_channel:
             await voice_client.move_to(voice_channel)
 
-        # 4. Подготовка данных для плеера
         queue = get_queue(self.bot, interaction.guild.id)
-        queue.clear()  # Для радио очищаем очередь
+        queue.clear()
 
         if voice_client.is_playing() or voice_client.is_paused():
             voice_client.stop()
 
-        # Создаем источник
         source = discord.FFmpegPCMAudio(station['url'], **config.RADIO_FFMPEG_OPTIONS)
 
         queue.append({
@@ -97,7 +90,6 @@ class RadioCog(commands.Cog):
             'channel': interaction.channel
         })
 
-        # 5. Запуск
         await play_next(self.bot, interaction.guild)
         await message.edit(content=f"📻 Играет радио: **{station['name']}**", view=None)
 
