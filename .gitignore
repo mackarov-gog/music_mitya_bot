@@ -26,4 +26,8 @@ __pycache__/
 secrets.h
 firmware/**/secrets.h
 
+music_library/
+
+План.txt
+
 

@@ -12,6 +12,13 @@ ffmpeg_options = {
 # Если вы хотите, чтобы yt-dlp игнорировал ошибки, это делается здесь
 ytdl_options = config.YTDL_FORMAT_OPTIONS.copy()
 ytdl_options['ignoreerrors'] = True
+
+ytdl_options['extractor_args'] = {
+'youtube': {
+'player_client': ['android', 'web']
+}
+}
+
 ytdl = yt_dlp.YoutubeDL(ytdl_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
