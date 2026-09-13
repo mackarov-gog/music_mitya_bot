@@ -58,9 +58,14 @@ Create a `.env` file in the project root:
 ```env
 TOKEN=your_bot_token
 MUSIC_FOLDER=./music_library
+# SYNC_GUILD_ID=123456789  # Guild ID for instant slash-command sync
 ```
 
 FFmpeg options and the normalization filter are configured in `config.py`.
+
+> ⚠️ **Slash commands missing?** Discord caches global commands for up to 1 hour.
+> Set `SYNC_GUILD_ID=<your server id>` in `.env` — commands appear instantly.
+> Or just wait ~1h / re-login to Discord (Ctrl+R).
 
 ---
 

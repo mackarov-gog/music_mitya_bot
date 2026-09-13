@@ -40,8 +40,7 @@ class YouTubeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='play', description="Найти и воспроизвести музыку",
-                          description_localizations=desc_localizations('play'))
+    @app_commands.command(name='play', description="Найти и воспроизвести музыку")
     async def play(self, interaction: discord.Interaction, query: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)
@@ -146,8 +145,7 @@ class YouTubeCog(commands.Cog):
         else:
             await play_next(self.bot, interaction.guild)
 
-    @app_commands.command(name='skip', description="Пропустить текущий трек",
-                          description_localizations=desc_localizations('skip'))
+    @app_commands.command(name='skip', description="Пропустить текущий трек")
     async def skip(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc and (vc.is_playing() or vc.is_paused()):
@@ -156,8 +154,7 @@ class YouTubeCog(commands.Cog):
         else:
             await interaction.response.send_message("🎵 Сейчас ничего не играет.", ephemeral=True)
 
-    @app_commands.command(name='skipto', description="Пропустить несколько треков (указать количество)",
-                          description_localizations=desc_localizations('skipto'))
+    @app_commands.command(name='skipto', description="Пропустить несколько треков (указать количество)")
     async def skipto(self, interaction: discord.Interaction, count: int):
         if count < 1:
             return await interaction.response.send_message(
@@ -169,8 +166,7 @@ class YouTubeCog(commands.Cog):
             f"⏭ Пропущено треков: **{skipped}**"
         )
 
-    @app_commands.command(name='seek', description="Перемотать текущий трек на указанную секунду",
-                          description_localizations=desc_localizations('seek'))
+    @app_commands.command(name='seek', description="Перемотать текущий трек на указанную секунду")
     async def seek(self, interaction: discord.Interaction, seconds: int):
         if seconds < 0:
             return await interaction.response.send_message(
@@ -189,8 +185,7 @@ class YouTubeCog(commands.Cog):
             f"⏩ Перемотано на **{pos}**."
         )
 
-    @app_commands.command(name='stop', description="Остановить и очистить очередь",
-                          description_localizations=desc_localizations('stop'))
+    @app_commands.command(name='stop', description="Остановить и очистить очередь")
     async def stop(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc:
@@ -216,8 +211,7 @@ class YouTubeCog(commands.Cog):
         else:
             await interaction.response.send_message("🤖 Бот не в канале.", ephemeral=True)
 
-    @app_commands.command(name='queue', description="Показать очередь",
-                          description_localizations=desc_localizations('queue'))
+    @app_commands.command(name='queue', description="Показать очередь")
     async def queue(self, interaction: discord.Interaction):
         from utils.music_player import QueuePaginationView
         queue = get_queue(self.bot, interaction.guild.id)
@@ -228,8 +222,7 @@ class YouTubeCog(commands.Cog):
         embed = view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
 
-    @app_commands.command(name='pause', description="Пауза",
-                          description_localizations=desc_localizations('pause'))
+    @app_commands.command(name='pause', description="Пауза")
     async def pause(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc and vc.is_playing():
@@ -238,8 +231,7 @@ class YouTubeCog(commands.Cog):
         else:
             await interaction.response.send_message("❌ Ничего не играет.", ephemeral=True)
 
-    @app_commands.command(name='resume', description="Продолжить",
-                          description_localizations=desc_localizations('resume'))
+    @app_commands.command(name='resume', description="Продолжить")
     async def resume(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc and vc.is_paused():
@@ -248,8 +240,7 @@ class YouTubeCog(commands.Cog):
         else:
             await interaction.response.send_message("❌ Не на паузе.", ephemeral=True)
 
-    @app_commands.command(name='volume', description="Установить громкость (0–200%)",
-                          description_localizations=desc_localizations('volume'))
+    @app_commands.command(name='volume', description="Установить громкость (0–200%)")
     async def volume(self, interaction: discord.Interaction, level: int):
         if not 0 <= level <= 200:
             return await interaction.response.send_message("❌ Громкость должна быть от 0 до 200.", ephemeral=True)

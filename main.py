@@ -1,9 +1,15 @@
 import discord
 from discord.ext import commands, tasks
 import os
+import sys
 import time
 import config
 from utils.db import init_db
+
+
+def _log(msg: str):
+    """Print with immediate flush so docker logs captures it."""
+    print(msg, flush=True)
 
 
 class MusicBot(commands.Bot):
@@ -42,27 +48,77 @@ class MusicBot(commands.Bot):
             pass
 
     async def setup_hook(self):
-        # Database for playlists and guild settings
+        _log("=== SETUP_HOOK START ===")
         try:
             await init_db()
-            print("База данных инициализирована.")
+            _log("База данных инициализирована.")
         except Exception as e:
-            print(f"Ошибка инициализации БД: {e}")
+            _log(f"ОШИБКА ИНИЦИАЛИЗАЦИИ БД: {type(e).__name__}: {e}")
+            import traceback
+            _log(traceback.format_exc())
 
-        self.healthcheck_loop.start()
-        self.watchdog_loop.start()
+        try:
+            self.healthcheck_loop.start()
+            self.watchdog_loop.start()
+        except Exception as e:
+            _log(f"ОШИБКА ЗАПУСКА LOOPS: {type(e).__name__}: {e}")
 
-        for filename in os.listdir('./cogs'):
+        _log("=== ЗАГРУЗКА COGS ===")
+        loaded_cogs = []
+        for filename in sorted(os.listdir('./cogs')):
             if filename.endswith('.py') and not filename.startswith('_'):
+                module = f'cogs.{filename[:-3]}'
                 try:
-                    await self.load_extension(f'cogs.{filename[:-3]}')
+                    await self.load_extension(module)
+                    loaded_cogs.append(module)
+                    _log(f"OK: {module}")
                 except Exception as e:
-                    print(f"Ошибка загрузки кога {filename}: {e}")
-        await self.tree.sync()
-        print("Коги загружены и слеш-команды синхронизированы!")
+                    _log(f"ERROR: {module}: {type(e).__name__}: {e}")
+                    import traceback
+                    _log(traceback.format_exc())
+
+        _log("=== КОМАНДЫ ДО SYNC ===")
+        commands = self.tree.get_commands()
+        _log(f"Всего команд в tree: {len(commands)}")
+        for cmd in commands:
+            _log(f"  /{cmd.name}")
+
+        _log("=== SYNC ===")
+        sync_guild_id = os.getenv('SYNC_GUILD_ID')
+        try:
+            if sync_guild_id and sync_guild_id.isdigit():
+                guild = discord.Object(id=int(sync_guild_id))
+                synced = await self.tree.sync(guild=guild)
+                target = f"гильдию {sync_guild_id}"
+            else:
+                synced = await self.tree.sync()
+                target = "глобально"
+
+            _log(f"Discord получил команд: {len(synced)} (target: {target})")
+            for cmd in synced:
+                _log(f"  SYNCED /{cmd.name}")
+        except Exception as e:
+            _log(f"ОШИБКА СИНХРОНИЗАЦИИ: {type(e).__name__}: {e}")
+            import traceback
+            _log(traceback.format_exc())
+
+        _log("=== ГОТОВО ===")
+        _log(f"Коги загружены: {len(loaded_cogs)}")
 
     async def on_ready(self):
-        print(f'Бот {self.user} успешно запущен!')
+        _log(f'Бот {self.user} успешно запущен!')
+        _log(f'Бот состоит в {len(self.guilds)} гильдиях')
+
+        # Fallback: force-sync on every guild (instant, no 1h cache).
+        try:
+            for guild in self.guilds:
+                synced = await self.tree.sync(guild=guild)
+                _log(f"  Гильдия {guild.name} ({guild.id}): синхронизировано {len(synced)} команд")
+            _log(f"Принудительная синхронизация на {len(self.guilds)} гильдиях выполнена.")
+        except Exception as e:
+            _log(f"Ошибка принудительной синхронизации: {type(e).__name__}: {e}")
+            import traceback
+            _log(traceback.format_exc())
 
     async def on_voice_state_update(self, member, before, after):
         """Clean up guild state when the bot is disconnected from voice."""

@@ -9,9 +9,16 @@ ffmpeg_options = {
     'options': '-vn',
 }
 
-# yt-dlp: игнорировать ошибки, использовать android/web клиенты
+
 ytdl_options = config.YTDL_FORMAT_OPTIONS.copy()
 ytdl_options['ignoreerrors'] = True
+
+ytdl_options['extractor_args'] = {
+'youtube': {
+'player_client': ['android', 'web']
+}
+}
+
 ytdl = yt_dlp.YoutubeDL(ytdl_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):

@@ -119,8 +119,7 @@ class HelpMenuCog(commands.Cog):
         embed.set_footer(text=t(lang, 'help_footer'))
         return embed
 
-    @app_commands.command(name='help', description="Показать справку по командам",
-                          description_localizations=desc_localizations('help'))
+    @app_commands.command(name='help', description="Показать справку по командам")
     async def help(self, interaction: discord.Interaction):
         try:
             await load_guild_state(interaction.guild.id)
@@ -129,8 +128,7 @@ class HelpMenuCog(commands.Cog):
         embed = self._help_embed(interaction.guild.id)
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name='language', description="Выбрать язык бота",
-                          description_localizations=desc_localizations('language'))
+    @app_commands.command(name='language', description="Выбрать язык бота")
     async def language(self, interaction: discord.Interaction):
         try:
             await load_guild_state(interaction.guild.id)
@@ -142,8 +140,7 @@ class HelpMenuCog(commands.Cog):
             view=view,
         )
 
-    @app_commands.command(name='menu', description="Показать панель управления плеером",
-                          description_localizations=desc_localizations('menu'))
+    @app_commands.command(name='menu', description="Показать панель управления плеером")
     async def menu(self, interaction: discord.Interaction):
         await show_menu(interaction, self.bot)
 

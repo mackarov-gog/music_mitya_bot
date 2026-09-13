@@ -568,8 +568,7 @@ class PlaylistCog(commands.Cog):
     # Commands
     # ------------------------------------------------------------------ #
 
-    @app_commands.command(name='playlist', description="Управление серверными плейлистами",
-                          description_localizations=desc_localizations('playlist'))
+    @app_commands.command(name='playlist', description="Управление серверными плейлистами")
     async def playlist(self, interaction: discord.Interaction):
         """Open the interactive playlist menu."""
         await load_guild_state_safe(interaction)
@@ -583,8 +582,7 @@ class PlaylistCog(commands.Cog):
 
     # -- Legacy slash commands (kept for power users / scripts) ---------- #
 
-    @app_commands.command(name='playlist_create', description="Создать плейлист",
-                          description_localizations=desc_localizations('playlist_create'))
+    @app_commands.command(name='playlist_create', description="Создать плейлист")
     async def playlist_create(self, interaction: discord.Interaction, name: str):
         name = name.strip()[:80]
         if not name:
@@ -598,8 +596,7 @@ class PlaylistCog(commands.Cog):
                 f"❌ Плейлист **{name}** уже существует.", ephemeral=True
             )
 
-    @app_commands.command(name='playlist_add', description="Добавить трек по поиску YouTube в плейлист",
-                          description_localizations=desc_localizations('playlist_add'))
+    @app_commands.command(name='playlist_add', description="Добавить трек по поиску YouTube в плейлист")
     async def playlist_add(self, interaction: discord.Interaction, name: str, query: str):
         await interaction.response.defer()
 
@@ -636,8 +633,7 @@ class PlaylistCog(commands.Cog):
                 f"❌ Плейлист **{name}** не найден.", ephemeral=True
             )
 
-    @app_commands.command(name='playlist_addurl', description="Добавить трек по ссылке в плейлист",
-                          description_localizations=desc_localizations('playlist_addurl'))
+    @app_commands.command(name='playlist_addurl', description="Добавить трек по ссылке в плейлист")
     async def playlist_addurl(
         self,
         interaction: discord.Interaction,
@@ -690,8 +686,7 @@ class PlaylistCog(commands.Cog):
                 f"❌ Плейлист **{name}** не найден.", ephemeral=True
             )
 
-    @app_commands.command(name='playlist_addlocal', description="Добавить локальный файл в плейлист",
-                          description_localizations=desc_localizations('playlist_addlocal'))
+    @app_commands.command(name='playlist_addlocal', description="Добавить локальный файл в плейлист")
     async def playlist_addlocal(self, interaction: discord.Interaction, name: str, filename: str):
         import os
         import config
@@ -721,8 +716,7 @@ class PlaylistCog(commands.Cog):
                 f"❌ Плейлист **{name}** не найден.", ephemeral=True
             )
 
-    @app_commands.command(name='playlist_list', description="Список плейлистов сервера",
-                          description_localizations=desc_localizations('playlist_list'))
+    @app_commands.command(name='playlist_list', description="Список плейлистов сервера")
     async def playlist_list(self, interaction: discord.Interaction):
         playlists = await db.list_playlists(interaction.guild.id)
         if not playlists:
@@ -742,8 +736,7 @@ class PlaylistCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name='playlist_show', description="Показать треки плейлиста",
-                          description_localizations=desc_localizations('playlist_show'))
+    @app_commands.command(name='playlist_show', description="Показать треки плейлиста")
     async def playlist_show(self, interaction: discord.Interaction, name: str):
         tracks = await db.get_playlist_tracks(interaction.guild.id, name)
         if not tracks:
@@ -765,8 +758,7 @@ class PlaylistCog(commands.Cog):
         embed.set_footer(text=f"Всего треков: {len(tracks)}")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name='playlist_play', description="Запустить плейлист в очередь",
-                          description_localizations=desc_localizations('playlist_play'))
+    @app_commands.command(name='playlist_play', description="Запустить плейлист в очередь")
     async def playlist_play(
         self,
         interaction: discord.Interaction,
@@ -777,8 +769,7 @@ class PlaylistCog(commands.Cog):
         await interaction.response.defer()
         await self._play_playlist(interaction, name, position, append)
 
-    @app_commands.command(name='playlist_remove', description="Удалить трек из плейлиста",
-                          description_localizations=desc_localizations('playlist_remove'))
+    @app_commands.command(name='playlist_remove', description="Удалить трек из плейлиста")
     async def playlist_remove(
         self,
         interaction: discord.Interaction,
@@ -801,8 +792,7 @@ class PlaylistCog(commands.Cog):
                 ephemeral=True,
             )
 
-    @app_commands.command(name='playlist_move', description="Переместить трек в плейлисте",
-                          description_localizations=desc_localizations('playlist_move'))
+    @app_commands.command(name='playlist_move', description="Переместить трек в плейлисте")
     async def playlist_move(
         self,
         interaction: discord.Interaction,
@@ -820,8 +810,7 @@ class PlaylistCog(commands.Cog):
                 "❌ Не удалось переместить трек (проверьте позиции).", ephemeral=True
             )
 
-    @app_commands.command(name='playlist_delete', description="Удалить плейлист",
-                          description_localizations=desc_localizations('playlist_delete'))
+    @app_commands.command(name='playlist_delete', description="Удалить плейлист")
     async def playlist_delete(self, interaction: discord.Interaction, name: str):
         ok = await db.delete_playlist(interaction.guild.id, name)
         if ok:

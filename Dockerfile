@@ -22,4 +22,7 @@ RUN mkdir -p /app/music_library /app/data
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD python -c "import os,time; t=os.path.getmtime('/tmp/bot_health'); exit(0 if time.time()-t<90 else 1)"
 
-CMD ["python", "main.py"]
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+CMD ["python", "-u", "main.py"]

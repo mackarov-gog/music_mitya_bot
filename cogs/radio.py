@@ -37,8 +37,7 @@ class RadioCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='radio', description="Включить интернет-радио",
-                          description_localizations=desc_localizations('radio'))
+    @app_commands.command(name='radio', description="Включить интернет-радио")
     async def radio(self, interaction: discord.Interaction, query: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)

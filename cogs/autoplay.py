@@ -13,8 +13,7 @@ class AutoplayCog(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name='chainplay',
-                          description="Режим «По цепочке»: бот сам подбирает следующий трек",
-                          description_localizations=desc_localizations('chainplay'))
+                          description="Режим «По цепочке»: бот сам подбирает следующий трек")
     async def chainplay(self, interaction: discord.Interaction):
         guild_id = interaction.guild.id
 

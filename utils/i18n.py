@@ -322,9 +322,17 @@ COMMAND_DESC = {
 
 
 def desc_localizations(cmd_key: str) -> dict[str, str]:
-    """Return {locale: description} for Discord native localization."""
+    """Return {locale: description} for Discord native localization.
+
+    Keys must be valid ``discord.Locale`` values ('ru', 'en-US').
+    The previous 'discord.{locale}' keys were invalid and crashed
+    the command decorators at cog load, hiding all slash commands.
+    """
     entry = COMMAND_DESC.get(cmd_key, {})
     out = {}
     for locale, text in entry.items():
-        out[f'discord.{locale}'] = text
+        if locale == 'ru':
+            out['ru'] = text
+        else:
+            out['en-US'] = text
     return out

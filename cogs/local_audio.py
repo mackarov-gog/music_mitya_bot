@@ -140,8 +140,7 @@ class LocalAudioCog(commands.Cog):
             await play_next(self.bot, interaction.guild)
             await interaction.followup.send(f"🎶 Играю локальный файл: **{base}**")
 
-    @app_commands.command(name='playlocal', description="Выбрать локальный файл и воспроизвести",
-                          description_localizations=desc_localizations('playlocal'))
+    @app_commands.command(name='playlocal', description="Выбрать локальный файл и воспроизвести")
     async def playlocal(self, interaction: discord.Interaction, filename: str | None = None):
         """Play a local file. Without a filename — pick from a select."""
         if not interaction.user.voice:
