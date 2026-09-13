@@ -9,6 +9,8 @@ requirements.md
 .vscode/
 .idea/
 
+docs/
+
 # Зависимости
 node_modules/
 venv/
@@ -26,8 +28,15 @@ __pycache__/
 secrets.h
 firmware/**/secrets.h
 
+<<<<<<< Updated upstream
+=======
 music_library/
+data/
+.db/
+*.db-wal
+*.db-shm
 
 План.txt
 
+>>>>>>> Stashed changes
 

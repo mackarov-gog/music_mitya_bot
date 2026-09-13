@@ -4,23 +4,101 @@ from discord.ext import commands
 from discord import app_commands
 import os
 import config
-from utils.music_player import get_queue, play_next
+from utils.i18n import desc_localizations
+from utils.music_player import get_queue, play_next, load_guild_state, get_volume
+
+
+class LocalSelectView(discord.ui.View):
+    """Paginated select for local files (25 per page). Selecting plays immediately."""
+
+    def __init__(self, files: list[str], user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.files = files
+        self.page = 0
+        self.selected_file = None
+        self._rebuild_select()
+
+    def _page_files(self) -> list[str]:
+        start = self.page * 25
+        return self.files[start:start + 25]
+
+    def _rebuild_select(self):
+        self.clear_items()
+        page_files = self._page_files()
+        options = [
+            discord.SelectOption(label=file[:90], value=file[:90])
+            for file in page_files
+        ]
+        select = discord.ui.Select(
+            placeholder="Выберите файл...",
+            options=options[:25],
+        )
+        select.callback = self.select_callback
+        self.add_item(select)
+
+        if self.page > 0:
+            prev = discord.ui.Button(emoji="⬅️", style=discord.ButtonStyle.secondary)
+            prev.callback = self.prev_page
+            self.add_item(prev)
+        if (self.page + 1) * 25 < len(self.files):
+            nxt = discord.ui.Button(emoji="➡️", style=discord.ButtonStyle.secondary)
+            nxt.callback = self.next_page
+            self.add_item(nxt)
+
+    async def prev_page(self, interaction: discord.Interaction):
+        if interaction.user != self.user:
+            return await interaction.response.send_message("❌ Это не ваш список!", ephemeral=True)
+        self.page -= 1
+        self._rebuild_select()
+        await interaction.response.edit_message(view=self)
+
+    async def next_page(self, interaction: discord.Interaction):
+        if interaction.user != self.user:
+            return await interaction.response.send_message("❌ Это не ваш список!", ephemeral=True)
+        self.page += 1
+        self._rebuild_select()
+        await interaction.response.edit_message(view=self)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        if interaction.user != self.user:
+            return await interaction.response.send_message("❌ Это не ваш список!", ephemeral=True)
+        self.selected_file = interaction.data["values"][0]
+        await interaction.response.defer()
+        self.stop()
 
 
 class LocalAudioCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='playlocal', description="Воспроизвести локальный файл")
-    async def playlocal(self, interaction: discord.Interaction, filename: str):
+    def _list_files(self) -> list[str]:
+        try:
+            return sorted(
+                f for f in os.listdir(config.MUSIC_FOLDER)
+                if os.path.isfile(os.path.join(config.MUSIC_FOLDER, f))
+            )
+        except FileNotFoundError:
+            return []
+
+    async def _play_file(self, interaction: discord.Interaction, filename: str):
+        """Connect to voice and play (or enqueue) a local file."""
         if not interaction.user.voice:
-            return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)
+            return await interaction.followup.send(
+                "❌ Вы не в голосовом канале!", ephemeral=True
+            )
 
-        full_path = os.path.join(config.MUSIC_FOLDER, filename)
+        base = os.path.basename(filename)
+        full_path = os.path.join(config.MUSIC_FOLDER, base)
         if not os.path.exists(full_path):
-            return await interaction.response.send_message(f"❌ Файл `{filename}` не найден.", ephemeral=True)
+            return await interaction.followup.send(
+                f"❌ Файл `{filename}` не найден.", ephemeral=True
+            )
 
-        await interaction.response.defer()
+        try:
+            await load_guild_state(interaction.guild.id)
+        except Exception:
+            pass
 
         voice_channel = interaction.user.voice.channel
         voice_client = interaction.guild.voice_client
@@ -32,18 +110,24 @@ class LocalAudioCog(commands.Cog):
                 if interaction.guild.voice_client:
                     await interaction.guild.voice_client.disconnect(force=True)
                 return await interaction.followup.send(
-                    "❌ Discord не отвечает. Не удалось подключиться к голосовому каналу (Таймаут). Попробуй еще раз.")
+                    "❌ Discord не отвечает. Не удалось подключиться к голосовому каналу (Таймаут). Попробуй еще раз."
+                )
             except Exception as e:
                 return await interaction.followup.send(f"❌ Ошибка подключения: {e}")
         elif voice_client.channel != voice_channel:
             await voice_client.move_to(voice_channel)
 
-        source = discord.FFmpegPCMAudio(full_path)
+        volume = await get_volume(interaction.guild.id) / 100.0
+        source = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(full_path, **config.FFMPEG_LOCAL_OPTIONS),
+            volume=volume,
+        )
 
         queue = get_queue(self.bot, interaction.guild.id)
         queue.append({
             'source': source,
-            'title': filename,
+            'title': base,
+            'file_name': base,
             'duration_sec': 0,
             'user_mention': interaction.user.mention,
             'type': 'Local',
@@ -51,40 +135,54 @@ class LocalAudioCog(commands.Cog):
         })
 
         if voice_client.is_playing() or voice_client.is_paused():
-            await interaction.followup.send(f"➕ Добавлено в очередь: **{filename}**")
+            await interaction.followup.send(f"➕ Добавлено в очередь: **{base}**")
         else:
             await play_next(self.bot, interaction.guild)
-            await interaction.followup.send(f"🎶 Играю локальный файл: **{filename}**", ephemeral=True)
+            await interaction.followup.send(f"🎶 Играю локальный файл: **{base}**")
 
-    @app_commands.command(name='listlocal', description="Список доступных локальных треков")
-    async def listlocal(self, interaction: discord.Interaction):
-        try:
-            files = [f for f in os.listdir(config.MUSIC_FOLDER) if os.path.isfile(os.path.join(config.MUSIC_FOLDER, f))]
-        except FileNotFoundError:
-            return await interaction.response.send_message(f"📁 Папка музыки не найдена.", ephemeral=True)
-
-        if not files:
-            return await interaction.response.send_message("📁 Нет локальных треков.")
+    @app_commands.command(name='playlocal', description="Выбрать локальный файл и воспроизвести",
+                          description_localizations=desc_localizations('playlocal'))
+    async def playlocal(self, interaction: discord.Interaction, filename: str | None = None):
+        """Play a local file. Without a filename — pick from a select."""
+        if not interaction.user.voice:
+            return await interaction.response.send_message(
+                "❌ Вы не в голосовом канале!", ephemeral=True
+            )
 
         await interaction.response.defer()
 
-        files.sort()
+        # Быстрый запуск по имени файла
+        if filename:
+            return await self._play_file(interaction, filename)
 
-        messages = []
-        current_chunk = "**Доступные локальные треки:**\n"
+        # Выбор из списка → сразу запуск/добавление
+        files = self._list_files()
+        if not files:
+            return await interaction.followup.send("📁 Нет локальных треков.", ephemeral=True)
 
-        for file in files:
-            if len(current_chunk) + len(file) + 1 > 1900:
-                messages.append(current_chunk)
-                current_chunk = f"{file}\n"
-            else:
-                current_chunk += f"{file}\n"
+        view = LocalSelectView(files, interaction.user)
+        msg = await interaction.followup.send(
+            f"📁 **Локальные треки** ({len(files)}):\nСтраница 1",
+            view=view,
+        )
+        await view.wait()
 
-        if current_chunk:
-            messages.append(current_chunk)
+        if view.selected_file is None:
+            try:
+                await msg.edit(content="⏰ Время выбора истекло.", view=None)
+            except Exception:
+                pass
+            return
 
-        for chunk in messages:
-            await interaction.followup.send(chunk)
+        await self._play_file(interaction, view.selected_file)
+
+        try:
+            await msg.edit(
+                content=f"📁 Выбран файл: `{view.selected_file}`",
+                view=None,
+            )
+        except Exception:
+            pass
 
 
 async def setup(bot):

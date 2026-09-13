@@ -1,83 +1,57 @@
+<div align="center">
+
 # 🎵 Mitya Music Bot
 
-**Митя** — это продвинутый музыкальный бот для Discord, написанный на `discord.py`. Он умеет «решать вопросики» с музыкой из YouTube, стримить интернет-радио и воспроизводить локальные файлы с сервера. 
-
-Полностью переведен на **Slash Commands (/)** и оснащен интерактивным плеером с кнопками.
-
----
-
-## 🚀 Основные фишки
-
-* **YouTube Integration**: Поиск по названию или воспроизведение по прямой ссылке.
-* **Radio Browser**: Интерактивный поиск по 30,000+ станциям через API `radio-browser.info`.
-* **Local Library**: Стриминг аудиофайлов напрямую из папки на сервере.
-* **Smart UI**: Управление через кнопки (Play/Pause, Skip, Stop, Queue) — больше никакого спама командами.
-* **Robust Engine**: Исправлены ошибки с двойными взаимодействиями (`InteractionResponded`) и зависанием FFmpeg.
-* **Docker Ready**: Быстрый запуск в изолированном контейнере.
+**Митя** — продвинутый музыкальный бот для Discord на `discord.py`
+**Mitya** — an advanced Discord music bot built with `discord.py`
 
 ---
 
-## 🛠 Установка и запуск
+### 🌍 Выберите язык / Choose a language
 
-### 1. Локально (Python)
-**Требования:** Python 3.10+, [FFmpeg](https://ffmpeg.org/download.html).
+| 🇷🇺 Русский | 🇬🇧 English |
+| :---: | :---: |
+| [**Перейти к русской версии**](README.ru.md) | [**Go to English version**](README.en.md) |
+
+</div>
+
+---
+
+## 📦 Quick Start / Быстрый старт
 
 ```bash
-# Клонируем
-git clone https://github.com/your-username/music_mitya_bot.git
-cd music_mitya_bot
-
-# Настраиваем окружение
-python -m venv .venv
-source .venv/bin/activate  # Или .venv\Scripts\activate на Windows
-pip install -r requirements.txt
+docker compose up -d --build
 ```
 
-### 2. Через Docker (Рекомендуется)
-Митя отлично чувствует себя в контейнере, где FFmpeg уже настроен.
-```bash
-docker-compose up -d --build
-```
+Create a `.env` file:
 
----
-
-## ⚙️ Конфигурация
-
-Создай файл `.env` в корне проекта:
 ```env
-TOKEN=твой_токен_бота
-MUSIC_FOLDER=\music  
+TOKEN=your_bot_token
+MUSIC_FOLDER=./music_library
 ```
 
-Все технические параметры FFmpeg и лимиты поиска настраиваются в `config.py`.
+## ✨ Highlights
+
+- 🎬 YouTube search & streaming (yt-dlp)
+- 📻 Internet radio (radio-browser.info)
+- 📁 Local audio library
+- 📋 Persistent server playlists (SQLite)
+- 🔗 Chain-play (autoplay) mode
+- 🔊 Auto volume leveling (`dynaudnorm`) + `/volume`
+- 🎛 Smart interactive player (9 buttons)
+- 🖥 Docker with healthcheck & watchdog
+
+## 📖 Full documentation
+
+| | |
+|---|---|
+| 🇷🇺 **[Русская документация](README.ru.md)** | Full Russian readme |
+| 🇬🇧 **[English documentation](README.en.md)** | Full English readme |
 
 ---
 
-## 🕹 Команды (Slash Commands)
+<div align="center">
 
-| Команда | Описание |
-| :--- | :--- |
-| `/play <query>` | Найти на YouTube и добавить в очередь |
-| `/radio <query>` | Найти радиостанцию и запустить стрим |
-| `/playlocal <name>` | Запустить файл из локальной папки |
-| `/listlocal` | Показать список доступных локальных файлов |
-| `/queue` | Показать текущую очередь треков |
-| `/stop` | Остановить музыку и очистить очередь |
+_© Mitya Music Bot_
 
-> **Интерактивный плеер**: При запуске любого трека появляется панель управления. Кнопки «Play/Pause» и «Skip» работают мгновенно благодаря системе деферинга (defer) запросов.
-
----
-
-## 📂 Структура проекта
-
-```text
-music_mitya_bot/
-├── cogs/                # Модули бота (YouTube, Radio, Local)
-├── utils/
-│   ├── music_player.py  # Ядро плеера, UI-View и логика очереди
-│   ├── radio_api.py     # Взаимодействие с Radio API
-│   └── ytdl_source.py   # Обработка YouTube ссылок через yt-dlp
-├── config.py            # Настройки FFmpeg и пути
-├── main.py              # Точка входа и инициализация бота
-└── docker-compose.yml   # Конфиг для деплоя
-```
+</div>

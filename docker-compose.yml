@@ -3,11 +3,19 @@ version: '3.8'
 services:
   music-bot:
     image: mackarovgog/music_mitya_bot:latest
+    build: .
     container_name: discord-music-bot
     restart: unless-stopped
     environment:
       - TOKEN=${TOKEN}
     volumes:
       - ./music_library:/app/music_library
+      - ./data:/app/data
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,time; t=os.path.getmtime('/tmp/bot_health'); exit(0 if time.time()-t<90 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3

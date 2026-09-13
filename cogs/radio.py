@@ -3,7 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 import asyncio
 from utils.radio_api import search_radio_stations
-from utils.music_player import get_queue, play_next
+from utils.i18n import desc_localizations
+from utils.music_player import get_queue, play_next, load_guild_state, get_volume
 import config
 
 class RadioSelectView(discord.ui.View):
@@ -36,12 +37,18 @@ class RadioCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name='radio', description="Включить интернет-радио")
+    @app_commands.command(name='radio', description="Включить интернет-радио",
+                          description_localizations=desc_localizations('radio'))
     async def radio(self, interaction: discord.Interaction, query: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("❌ Вы не в голосовом канале!", ephemeral=True)
 
         await interaction.response.defer()
+
+        try:
+            await load_guild_state(interaction.guild.id)
+        except Exception:
+            pass
 
         stations = await search_radio_stations(query)
         if not stations:
@@ -75,10 +82,9 @@ class RadioCog(commands.Cog):
         queue = get_queue(self.bot, interaction.guild.id)
         queue.clear()
 
-        if voice_client.is_playing() or voice_client.is_paused():
-            voice_client.stop()
-
+        volume = await get_volume(interaction.guild.id) / 100.0
         source = discord.FFmpegPCMAudio(station['url'], **config.RADIO_FFMPEG_OPTIONS)
+        source = discord.PCMVolumeTransformer(source, volume=volume)
 
         queue.append({
             'source': source,
@@ -90,7 +96,14 @@ class RadioCog(commands.Cog):
             'channel': interaction.channel
         })
 
-        await play_next(self.bot, interaction.guild)
+        # Если сейчас что-то играет — vc.stop() сам триггерит play_next
+        # через after-callback (без гонки двух play_next).
+        was_playing = voice_client.is_playing() or voice_client.is_paused()
+        if was_playing:
+            voice_client.stop()
+        else:
+            await play_next(self.bot, interaction.guild)
+
         await message.edit(content=f"📻 Играет радио: **{station['name']}**", view=None)
 
 async def setup(bot):
